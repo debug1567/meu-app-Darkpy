@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DarkPy - Aprenda Python</title>
+<style>
+body { margin:0; font-family: 'Consolas', monospace; background:#121212; color:#e0e0e0; }
+.container { padding:20px; max-width:600px; margin:auto; position:relative; }
+input, button, textarea { width:100%; padding:10px; margin:10px 0; border:none; border-radius:5px; font-size:16px; }
+input { background:#1e1e1e; color:#e0e0e0; }
+button { background:#39ff14; color:#121212; font-weight:bold; cursor:pointer; transition:0.2s; }
+button:hover { box-shadow:0 0 10px #39ff14; }
+textarea { background:#1e1e1e; color:#e0e0e0; height:150px; resize:none; font-family: 'Consolas', monospace;}
+nav { display:flex; justify-content:space-around; margin-bottom:20px; }
+nav button { width:auto; padding:10px 20px; }
+.hidden { display:none; }
+.neon { color:#39ff14; text-shadow:0 0 5px #39ff14; }
+#saida, #explicacao { background:#1e1e1e; padding:10px; border-radius:5px; white-space:pre-wrap; margin-top:10px;}
+#criador { position:absolute; top:10px; right:10px; color:#39ff14; font-weight:bold; }
+</style>
+</head>
+<body>
+
+<!-- Nome do criador -->
+<div id="criador">MITNICK</div>
+
+<!-- Tela Cadastro -->
+<div id="cadastro" class="container">
+    <h1 class="neon">DarkPy - Cadastro</h1>
+    <input type="text" id="nome" placeholder="Nome">
+    <input type="number" id="idade" placeholder="Idade">
+    <input type="email" id="email" placeholder="Email">
+    <input type="tel" id="telefone" placeholder="Número de telefone">
+    <button onclick="cadastrar()">Prosseguir</button>
+</div>
+
+<!-- Tela App -->
+<div id="app" class="container hidden">
+    <h1 class="neon">DarkPy - Aprenda Python</h1>
+    <nav>
+        <button onclick="showSection('tarefas')">Tarefas</button>
+        <button onclick="showSection('estudo')">Central de Estudo</button>
+    </nav>
+
+    <!-- Tarefas -->
+    <div id="tarefas">
+        <h2>Tarefas Python</h2>
+        <p id="descricao"></p>
+        <textarea id="codigo"></textarea>
+        <button onclick="rodarCodigo()">Rodar Código</button>
+        <pre id="saida">(Saída aparecerá aqui)</pre>
+        <button onclick="testarTarefa()">Verificar Tarefa</button>
+        <p class="neon">XP: <span id="xp">0</span></p>
+        <button onclick="proximaTarefa()">Próxima Tarefa</button>
+        <pre id="explicacao">(Explicação aparecerá aqui)</pre>
+    </div>
+
+    <!-- Central de Estudo -->
+    <div id="estudo" class="hidden">
+        <h2>Central de Estudo</h2>
+        <ul>
+            <li><a href="https://www.youtube.com/@CoreySchafer" target="_blank">Corey Schafer - YouTube</a></li>
+            <li><a href="https://www.youtube.com/@ProgrammingwithMosh" target="_blank">Programming with Mosh - YouTube</a></li>
+            <li><a href="https://www.w3schools.com/python/" target="_blank">W3Schools Python</a></li>
+            <li><a href="https://www.geeksforgeeks.org/python-programming-language/" target="_blank">GeeksforGeeks Python</a></li>
+        </ul>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/pyodide/v0.23.4/full/pyodide.js"></script>
+<script>
+let pyodideReady=false, pyodide=null;
+async function loadPyodideAndPackages(){
+    pyodide = await loadPyodide();
+    pyodideReady=true;
+}
+loadPyodideAndPackages();
+
+/* --- Cadastro --- */
+function validarEmail(email){ return /\S+@\S+\.\S+/.test(email); }
+function validarTelefone(tel){ return /^\d{10,}$/.test(tel); }
+
+function cadastrar(){
+    const nome = document.getElementById('nome').value.trim();
+    const idade = document.getElementById('idade').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const telefone = document.getElementById('telefone').value.trim();
+    if(!nome || !idade || !email || !telefone){ alert("Preencha todos os campos!"); return; }
+    if(!validarEmail(email)){ alert("Email inválido!"); return; }
+    if(!validarTelefone(telefone)){ alert("Telefone inválido! Use pelo menos 10 números."); return; }
+    const usuarios = JSON.parse(localStorage.getItem('usuarios')||"[]");
+    let idx = usuarios.findIndex(u=>u.email===email);
+    if(idx>=0){ usuarios[idx]={nome, idade, email, telefone}; }
+    else{ usuarios.push({nome, idade, email, telefone}); }
+    localStorage.setItem('usuarios', JSON.stringify(usuarios));
+    localStorage.setItem('usuarioAtual', email);
+    document.getElementById('cadastro').classList.add('hidden');
+    document.getElementById('app').classList.remove('hidden');
+    carregarProgresso();
+    iniciarTarefas();
+}
+
+/* --- Navegação --- */
+function showSection(sec){
+    ['tarefas','estudo'].forEach(id=>document.getElementById(id).classList.add('hidden'));
+    document.getElementById(sec).classList.remove('hidden');
+}
+
+/* --- Botão Secreto Mitnick --- */
+let contadorClique=0;
+document.body.addEventListener('click', e=>{
+    if(e.clientX>window.innerWidth*0.8 && e.clientY<window.innerHeight*0.2){
+        contadorClique++;
+        if(contadorClique>=5){ contadorClique=0; acessarMitnick(); }
+    }
+});
+function acessarMitnick(){
+    const senha = prompt("Senha Mitnick:");
+    if(senha==="404"){
+        const usuarios = JSON.parse(localStorage.getItem('usuarios')||"[]");
+        let lista="<h3>Usuários cadastrados:</h3><ul>";
+        usuarios.forEach(u=>{ lista+=`<li>${u.nome} | ${u.idade} | ${u.email} | ${u.telefone}</li>`; });
+        lista+="</ul>";
+        const div=document.createElement('div');
+        div.style.background="#1e1e1e"; div.style.padding="10px"; div.style.margin="10px 0"; div.style.borderRadius="5px";
+        div.innerHTML=lista;
+        document.body.appendChild(div);
+    }else{ alert("Acesso negado!"); }
+}
+
+/* --- Tarefas --- */
+const tarefas=[
+    {descricao:'Escreva "Olá Mundo" usando print()', validar:c=>c.includes('print("Olá Mundo")'), explicacao:"Objetivo: Exibir 'Olá Mundo'.\nPassos: 1. print(\"Olá Mundo\")"},
+    {descricao:'Crie a=5 e b=3 e some, mostre resultado', validar:c=>c.includes("a+b"), explicacao:"Objetivo: Somar a+b e mostrar.\nPassos: 1. a=5 2. b=3 3. print(a+b)"},
+    {descricao:"Verifique se idade >=18 e mostre 'Maior de idade'", validar:c=>c.includes("if") && c.includes("Maior de idade"), explicacao:"Objetivo: if/else para idade.\nPassos: if idade>=18: print('Maior de idade') else: print('Menor de idade')"}
+];
+let tarefaAtual=0, xp=0, codigosSalvos={};
+
+/* --- Progresso --- */
+function salvarProgresso(){
+    const email = localStorage.getItem('usuarioAtual');
+    if(!email) return;
+    const data={tarefaAtual,xp,codigosSalvos};
+    localStorage.setItem("progresso_"+email, JSON.stringify(data));
+}
+function carregarProgresso(){
+    const email=localStorage.getItem('usuarioAtual');
+    if(!email) return;
+    const data=JSON.parse(localStorage.getItem("progresso_"+email)||"{}");
+    if(data.tarefaAtual!==undefined) tarefaAtual=data.tarefaAtual;
+    if(data.xp!==undefined) xp=data.xp;
+    if(data.codigosSalvos) codigosSalvos=data.codigosSalvos;
+    document.getElementById('xp').innerText=xp;
+}
+
+/* --- Tarefas --- */
+function iniciarTarefas(){ mostrarTarefa(); }
+function mostrarTarefa(){
+    document.getElementById('descricao').innerText=tarefas[tarefaAtual].descricao;
+    document.getElementById('codigo').value = codigosSalvos[tarefaAtual] || "";
+    document.getElementById('saida').innerText="(Saída aparecerá aqui)";
+    document.getElementById('explicacao').innerText="(Explicação aparecerá aqui)";
+}
+
+/* --- Rodar Código --- */
+async function rodarCodigo(){
+    if(!pyodideReady){ alert("Carregando Python..."); return; }
+    const codigo=document.getElementById('codigo').value;
+    codigosSalvos[tarefaAtual]=codigo;
+    salvarProgresso();
+    try{
+        await pyodide.runPythonAsync(`
+import sys
+class Captura:
+    def __init__(self):
+        self.text=""
+    def write(self, txt): self.text+=txt
+    def flush(self): pass
+captura=Captura()
+sys.stdout=captura
+sys.stderr=captura
+`);
+        await pyodide.runPythonAsync(codigo);
+        const output=pyodide.runPython("captura.text");
+        document.getElementById('saida').innerText=output||"(Sem saída)";
+    }catch(err){ document.getElementById('saida').innerText="Erro:\n"+err; }
+}
+
+/* --- Testar tarefa --- */
+function testarTarefa(){
+    const codigo=document.getElementById('codigo').value;
+    codigosSalvos[tarefaAtual]=codigo;
+    salvarProgresso();
+    if(tarefas[tarefaAtual].validar(codigo)){
+        alert("Parabéns! Tarefa concluída ✅");
+        xp+=10;
+        document.getElementById('xp').innerText=xp;
+        document.getElementById('explicacao').innerText=tarefas[tarefaAtual].explicacao;
+    }else{
+        document.getElementById('explicacao').innerText="Ops! Tente novamente.\nDica: "+tarefas[tarefaAtual].explicacao;
+    }
+}
+
+/* --- Próxima tarefa --- */
+function proximaTarefa(){
+    if(tarefaAtual<tarefas.length-1){ tarefaAtual++; mostrarTarefa(); salvarProgresso(); }
+    else{ alert("Você concluiu todas as tarefas do módulo!"); }
+}
+</script>
+</body>
+</html>
